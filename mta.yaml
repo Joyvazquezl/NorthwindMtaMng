@@ -1,0 +1,92 @@
+_schema-version: "3.2"
+ID: products_mta_mng
+version: 0.0.1
+modules:
+- name: products_mta_mng-destination-content
+  type: com.sap.application.content
+  requires:
+  - name: products_mta_mng-destination-service
+    parameters:
+      content-target: true
+  - name: products_mta_mng_html_repo_host
+    parameters:
+      service-key:
+        name: products_mta_mng_html_repo_host-key
+  - name: uaa_products_mta_mng
+    parameters:
+      service-key:
+        name: uaa_products_mta_mng-key
+  parameters:
+    content:
+      instance:
+        destinations:
+        - Name: products_mng_products_mta_mng_html_repo_host
+          ServiceInstanceName: products_mta_mng-html5-app-host-service
+          ServiceKeyName: products_mta_mng_html_repo_host-key
+          sap.cloud.service: products_mng
+        - Authentication: OAuth2UserTokenExchange
+          Name: products_mng_uaa_products_mta_mng
+          ServiceInstanceName: products_mta_mng-xsuaa-service
+          ServiceKeyName: uaa_products_mta_mng-key
+          sap.cloud.service: products_mng
+        existing_destinations_policy: ignore
+  build-parameters:
+    no-source: true
+- name: products_mta_mng-app-content
+  type: com.sap.application.content
+  path: .
+  requires:
+  - name: products_mta_mng_html_repo_host
+    parameters:
+      content-target: true
+  build-parameters:
+    build-result: resources
+    requires:
+    - artifacts:
+      - nsproductsmng.zip
+      name: nsproductsmng
+      target-path: resources/
+- name: nsproductsmng
+  type: html5
+  path: productsmng
+  build-parameters:
+    build-result: dist
+    builder: custom
+    commands:
+    - npm install
+    - npm run build:cf
+    supported-platforms: []
+resources:
+- name: products_mta_mng-destination-service
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      init_data:
+        instance:
+          destinations:
+          - Authentication: NoAuthentication
+            Name: ui5
+            ProxyType: Internet
+            Type: HTTP
+            URL: https://ui5.sap.com
+          existing_destinations_policy: update
+      version: 1.0.0
+    service: destination
+    service-name: products_mta_mng-destination-service
+    service-plan: lite
+- name: products_mta_mng_html_repo_host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-name: products_mta_mng-html5-app-host-service
+    service-plan: app-host
+- name: uaa_products_mta_mng
+  type: org.cloudfoundry.managed-service
+  parameters:
+    path: ./xs-security.json
+    service: xsuaa
+    service-name: products_mta_mng-xsuaa-service
+    service-plan: application
+parameters:
+  deploy_mode: html5-repo
